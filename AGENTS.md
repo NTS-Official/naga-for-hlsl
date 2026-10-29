@@ -26,5 +26,5 @@ This repository contains only `naga` and the crates it needs, trimmed from the w
 
 ### Windows notes
 
-- The recursion tests need a bigger test-thread stack: set `RUST_MIN_STACK=33554432` before running `cargo test`.
+- The recursion tests overflow the default 2 MiB test-thread stack in debug builds; `.cargo/config.toml` raises `RUST_MIN_STACK` for everything cargo runs.
 - Every test run rewrites `naga/tests/out`. The working copy is checked out with CRLF (`core.autocrlf=true`) but the tests write LF, so `git status` lists those files as modified while `git diff` is empty. Restore them with `git checkout -- naga/tests/out`.

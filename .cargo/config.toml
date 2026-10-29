@@ -1,2 +1,6 @@
 [alias]
 xtask = "run -p naga-xtask --"
+
+[env]
+# The recursion tests overflow the default 2 MiB test-thread stack in debug builds.
+RUST_MIN_STACK = "33554432"
