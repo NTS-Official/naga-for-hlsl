@@ -126,7 +126,6 @@ rspirv.workspace = true
 spirv.workspace = true
 serde = { workspace = true, features = ["default", "derive"] }
 strum = { workspace = true }
-walkdir.workspace = true
 
 [lints.rust]
 missing_debug_implementations = "warn"
