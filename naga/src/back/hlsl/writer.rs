@@ -1222,13 +1222,38 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
     ) -> BackendResult {
         let binding = *global.binding.as_ref().unwrap();
 
+        // This was already validated, so we can confidently unwrap it.
+        let bt = self.options.resolve_resource_binding(&binding).unwrap();
+
+        if self.options.static_samplers {
+            let (ty, name) = match module.types[global.ty].inner {
+                TypeInner::Sampler { comparison: false } => {
+                    ("SamplerState", &self.names[&NameKey::GlobalVariable(handle)])
+                }
+                TypeInner::Sampler { comparison: true } => (
+                    "SamplerComparisonState",
+                    &self.names[&NameKey::GlobalVariable(handle)],
+                ),
+                _ => {
+                    return Err(Error::Custom(
+                        "static_samplers does not support sampler binding arrays".to_string(),
+                    ));
+                }
+            };
+
+            write!(self.out, "{ty} {name} : register(s{}", bt.register)?;
+            if bt.space != 0 {
+                write!(self.out, ", space{}", bt.space)?;
+            }
+            writeln!(self.out, ");")?;
+
+            return Ok(());
+        }
+
         let key = super::SamplerIndexBufferKey {
             group: binding.group,
         };
         self.write_wrapped_sampler_buffer(key)?;
-
-        // This was already validated, so we can confidently unwrap it.
-        let bt = self.options.resolve_resource_binding(&binding).unwrap();
 
         match module.types[global.ty].inner {
             TypeInner::Sampler { comparison } => {

@@ -517,6 +517,15 @@ pub struct Options {
     /// HLSL binding information for the sampler heap and comparison sampler heap.
     pub sampler_heap_target: SamplerHeapBindTargets,
 
+    /// Emit every sampler as its own `SamplerState` global instead of routing
+    /// samples through the sampler heap.
+    ///
+    /// Each sampler is then declared with the register its binding maps to,
+    /// which lets the pipeline use static samplers in its root signature.
+    /// Sampler binding arrays are not supported in this mode, as static
+    /// samplers cannot be indexed at run time.
+    pub static_samplers: bool,
+
     /// Mapping of each bind group's sampler index buffer to a bind target.
     #[cfg_attr(
         feature = "deserialize",
@@ -572,6 +581,7 @@ impl Default for Options {
             fake_missing_bindings: true,
             special_constants_binding: None,
             sampler_heap_target: SamplerHeapBindTargets::default(),
+            static_samplers: false,
             sampler_buffer_binding_map: alloc::collections::BTreeMap::default(),
             immediates_target: None,
             dynamic_storage_buffer_offsets_targets: alloc::collections::BTreeMap::new(),
