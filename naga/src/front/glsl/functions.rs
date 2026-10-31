@@ -1358,7 +1358,10 @@ impl Frontend {
             .push(Statement::Return { value }, Default::default());
 
         let Context {
-            body, expressions, ..
+            body,
+            expressions,
+            locals,
+            ..
         } = ctx;
 
         ctx.module.entry_points.push(EntryPoint {
@@ -1374,6 +1377,7 @@ impl Frontend {
                 arguments,
                 expressions,
                 body,
+                local_variables: locals,
                 result: ty.map(|ty| FunctionResult { ty, binding: None }),
                 ..Default::default()
             },

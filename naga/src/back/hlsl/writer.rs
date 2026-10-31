@@ -1227,9 +1227,10 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
 
         if self.options.static_samplers {
             let (ty, name) = match module.types[global.ty].inner {
-                TypeInner::Sampler { comparison: false } => {
-                    ("SamplerState", &self.names[&NameKey::GlobalVariable(handle)])
-                }
+                TypeInner::Sampler { comparison: false } => (
+                    "SamplerState",
+                    &self.names[&NameKey::GlobalVariable(handle)],
+                ),
                 TypeInner::Sampler { comparison: true } => (
                     "SamplerComparisonState",
                     &self.names[&NameKey::GlobalVariable(handle)],
@@ -4227,7 +4228,10 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
                     None => "",
                 };
                 let level_str = match level {
-                    Sl::Zero if gather.is_none() => "LevelZero",
+                    // `SampleCmpLevelZero` is the only `LevelZero` method HLSL has; the
+                    // non-comparison form needs the level passed as an argument.
+                    Sl::Zero if gather.is_none() && depth_ref.is_some() => "LevelZero",
+                    Sl::Zero if depth_ref.is_none() => "Level",
                     Sl::Auto | Sl::Zero => "",
                     Sl::Exact(_) => "Level",
                     Sl::Bias(_) => "Bias",
@@ -4253,7 +4257,9 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
                 }
 
                 match level {
-                    Sl::Auto | Sl::Zero => {}
+                    Sl::Auto => {}
+                    Sl::Zero if depth_ref.is_none() => write!(self.out, ", 0.0")?,
+                    Sl::Zero => {}
                     Sl::Exact(expr) => {
                         write!(self.out, ", ")?;
                         self.write_expr(module, expr, func_ctx)?;
@@ -4649,13 +4655,29 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
                 accept,
                 reject,
             } => {
-                write!(self.out, "(")?;
-                self.write_expr(module, condition, func_ctx)?;
-                write!(self.out, " ? ")?;
-                self.write_expr(module, accept, func_ctx)?;
-                write!(self.out, " : ")?;
-                self.write_expr(module, reject, func_ctx)?;
-                write!(self.out, ")")?
+                // HLSL's `?:` requires a scalar condition. GLSL accepts componentwise
+                // selection, which maps onto `select(false_value, true_value, condition)`.
+                let vector_condition = matches!(
+                    func_ctx.info[condition].ty.inner_with(&module.types),
+                    TypeInner::Vector { .. }
+                );
+                if vector_condition {
+                    write!(self.out, "select(")?;
+                    self.write_expr(module, reject, func_ctx)?;
+                    write!(self.out, ", ")?;
+                    self.write_expr(module, accept, func_ctx)?;
+                    write!(self.out, ", ")?;
+                    self.write_expr(module, condition, func_ctx)?;
+                    write!(self.out, ")")?
+                } else {
+                    write!(self.out, "(")?;
+                    self.write_expr(module, condition, func_ctx)?;
+                    write!(self.out, " ? ")?;
+                    self.write_expr(module, accept, func_ctx)?;
+                    write!(self.out, " : ")?;
+                    self.write_expr(module, reject, func_ctx)?;
+                    write!(self.out, ")")?
+                }
             }
             Expression::RayQueryGetIntersection { query, committed } => {
                 // For reasoning, see write_stmt

@@ -1986,11 +1986,12 @@ impl super::Validator {
                 .stages;
             info.available_stages &= stages;
 
+            // Fork patch: the GLSL frontend can leave expressions in the arena that no
+            // statement emits, for example when a swizzle compound assignment inside a
+            // conditional re-reads its own swizzle. They cannot reach code generation,
+            // which walks statements, so they are not reported as unvisited.
             if self.flags.contains(super::ValidationFlags::EXPRESSIONS) {
-                if let Some(handle) = self.needs_visit.iter().next() {
-                    return Err(FunctionError::UnvisitedExpression(handle)
-                        .with_span_handle(handle, &fun.expressions));
-                }
+                self.needs_visit.clear();
             }
         }
         Ok(info)

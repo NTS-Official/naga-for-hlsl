@@ -1527,10 +1527,19 @@ impl<W: Write> super::Writer<'_, W> {
                         writeln!(self.out, " val) {{")?;
 
                         let level = crate::back::Level(1);
-                        writeln!(
-                            self.out,
-                            "{level}return val >= 0 ? val : asint(-asuint(val));"
-                        )?;
+                        if components.is_some_and(|components| components > 1) {
+                            // HLSL's `?:` takes a scalar condition, so a vector argument has to
+                            // go through `select(false_value, true_value, condition)`.
+                            writeln!(
+                                self.out,
+                                "{level}return select(asint(-asuint(val)), val, val >= 0);"
+                            )?;
+                        } else {
+                            writeln!(
+                                self.out,
+                                "{level}return val >= 0 ? val : asint(-asuint(val));"
+                            )?;
+                        }
                         writeln!(self.out, "}}")?;
                         writeln!(self.out)?;
                     }
